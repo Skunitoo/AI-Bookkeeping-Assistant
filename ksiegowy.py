@@ -12,69 +12,77 @@ import re
 import hashlib
 from datetime import datetime
 
-# --- UI & STYLING (Professional Dark Mode) ---
-st.set_page_config(page_title="Global Finance OS | v3.8", layout="wide")
+# --- UI & STYLING (Financial Terminal v2) ---
+st.set_page_config(page_title="Global Finance OS | v3.9", layout="wide")
 
 st.markdown("""
     <style>
     .stApp { background-color: #0E1117; color: #C9D1D9; }
     .stMetric { background-color: #161B22; border: 1px solid #30363D; padding: 15px; border-radius: 10px; }
     .stButton>button { 
-        background-color: #238636; color: white; border-radius: 5px; 
-        font-weight: bold; width: 100%; border: none; height: 45px;
+        background-color: #238636; color: white; border-radius: 6px; 
+        font-weight: bold; width: 100%; border: none; height: 48px;
+        transition: 0.3s;
     }
-    .stepper { display: flex; justify-content: space-between; margin-bottom: 25px; }
-    .step { color: #8B949E; font-size: 0.85rem; font-weight: bold; border-bottom: 2px solid #30363D; width: 32%; text-align: center; padding-bottom: 8px; }
+    .stButton>button:hover { background-color: #2EA043; transform: translateY(-2px); }
+    .stepper { display: flex; justify-content: space-between; margin-bottom: 30px; }
+    .step { color: #8B949E; font-size: 0.8rem; font-weight: bold; border-bottom: 2px solid #30363D; width: 32%; text-align: center; padding-bottom: 10px; }
     .step-active { color: #58A6FF; border-bottom: 2px solid #58A6FF; }
+    /* Data Editor tweak */
+    div[data-testid="stDataEditor"] { background-color: #161B22; border-radius: 8px; }
     </style>
     """, unsafe_allow_html=True)
 
-# --- LOCALIZATION ---
+# --- LOCALIZATION (SaaS Sales Optimized) ---
 TRANSLATIONS = {
     "PL": {
-        "title": "🚀 Paczka księgowa w minutę",
-        "subtitle": "Koniec z ręcznym przepisywaniem. System gotowy do pracy.",
-        "sidebar": "Ustawienia",
-        "clear": "🗑️ Resetuj system",
-        "upload": "Wgraj faktury lub screenshoty",
-        "process": "⚙️ PRZYGOTUJ PLIKI",
-        "ledger": "📝 Rejestr dokumentów",
-        "insights": "🧠 Analiza strategiczna",
-        "download": "📦 POBIERZ ZIP",
+        "title": "⚡ Zrób paczkę dla księgowej w minutę",
+        "subtitle": "Koniec z ręcznym przepisywaniem faktur. Inteligentny audyt kosztów.",
+        "sidebar": "Ustawienia Systemu",
+        "clear": "🗑️ Resetuj Sesję",
+        "upload": "Wgraj faktury lub screenshoty (Bulk)",
+        "process": "⚙️ PRZYGOTUJ PACZKĘ DLA KSIĘGOWEJ",
+        "ledger": "📝 Rejestr Dokumentów",
+        "insights": "🧠 Analiza CFO (AI)",
+        "download": "📦 POBIERZ GOTOWY ZIP",
         "categories": "TOWAR, MEDIA, PALIWO, USŁUGI, INNE",
-        "dup_msg": "⚠️ Plik pominięty (Duplikat): "
+        "dup_msg": "⚠️ Duplikat pominięty: "
     },
     "EN": {
-        "title": "🚀 One-minute accounting pack",
-        "subtitle": "Zero manual entry. System ready.",
-        "sidebar": "Settings",
+        "title": "⚡ One-minute accounting pack",
+        "subtitle": "Zero manual entry. Intelligent expense auditing.",
+        "sidebar": "System Settings",
         "clear": "🗑️ Factory Reset",
-        "upload": "Upload invoices or screenshots",
-        "process": "⚙️ PREPARE PACKAGE",
+        "upload": "Upload Documents (Invoices, Receipts)",
+        "process": "⚙️ PREPARE ACCOUNTANT PACKAGE",
         "ledger": "📝 Financial Ledger",
-        "insights": "🧠 Strategic Insights",
-        "download": "📦 DOWNLOAD ZIP",
+        "insights": "🧠 CFO Insights (AI)",
+        "download": "📦 DOWNLOAD FINAL ZIP",
         "categories": "COGS, OPEX, CAPEX, SERVICES, OTHER",
-        "dup_msg": "⚠️ Skipping duplicate: "
+        "dup_msg": "⚠️ Duplicate skipped: "
     }
 }
 
-# --- SURGICAL TOOLS ---
-def robust_json_parser(text):
-    """Deep extraction logic to prevent 'Extra data' errors."""
+# --- SURGICAL ATOMIC PARSER (The "Extra Data" Killer) ---
+def atomic_json_parser(text):
+    """
+    Wykorzystuje JSONDecoder do pobrania tylko pierwszego poprawnego obiektu.
+    Całkowicie eliminuje błąd 'Extra data'.
+    """
     try:
-        # 1. Clean Markdown code blocks
+        # Usuń bloki kodu markdown jeśli istnieją
         text = re.sub(r'```json\s*|```', '', text)
-        # 2. Find the outermost braces
-        start = text.find('{')
-        end = text.rfind('}')
-        if start != -1 and end != -1:
-            json_str = text[start:end+1].strip()
-            # 3. Final sanitization (remove trailing newlines)
-            return json_str
+        # Znajdź początek JSONa
+        start_idx = text.find('{')
+        if start_idx == -1: return None
+        
+        relevant_content = text[start_idx:]
+        # Użyj dekodera do wycięcia dokładnie jednego obiektu
+        decoder = json.JSONDecoder()
+        data, end_idx = decoder.raw_decode(relevant_content)
+        return data
     except Exception:
-        pass
-    return text.strip()
+        return None
 
 def get_hash(data): return hashlib.md5(data).hexdigest()
 
@@ -88,21 +96,21 @@ with st.sidebar:
     lang = st.radio("Language", ["PL", "EN"], horizontal=True)
     t = TRANSLATIONS[lang]
     st.header(t["sidebar"])
-    region = st.selectbox("Format Excel:", ["Polska (,)", "International (.)"])
-    is_pl = ("," in region)
+    region = st.selectbox("Format Excel:", ["EU (Przecinki ,)", "US (Kropki .)"])
+    is_pl_format = ("EU" in region)
     if st.button(t["clear"]):
         st.session_state['vault'] = pd.DataFrame(columns=COLS)
         st.session_state['storage'] = {}
         st.rerun()
     api_key = st.secrets.get("api_key", "") or st.text_input("Gemini API Key", type="password")
 
-# --- STEPPER ---
+# --- STEPPER UX ---
 s1, s2 = "step", "step"
 if st.session_state['vault'].empty: s1 = "step step-active"
 else: s2 = "step step-active"
-st.markdown(f'<div class="stepper"><div class="{s1}">1. WGRAJ</div><div class="{s2}">2. SPRAWDŹ</div><div class="step">3. POBIERZ</div></div>', unsafe_allow_html=True)
+st.markdown(f'<div class="stepper"><div class="{s1}">1. WGRAJ PLIKI</div><div class="{s2}">2. WERYFIKACJA</div><div class="step">3. GOTOWY ZIP</div></div>', unsafe_allow_html=True)
 
-# --- MAIN ENGINE ---
+# --- MAIN UI ---
 st.title(t["title"])
 st.markdown(f"*{t['subtitle']}*")
 
@@ -122,85 +130,85 @@ if files and api_key:
                 continue
 
             try:
-                # Optimized prompt for mobile screenshots
-                prompt = f"Act as an OCR auditor. Extract document data into JSON. Use categories: {t['categories']}. Schema: {{\"date\":\"YYYY-MM-DD\", \"vendor\":\"Name\", \"category\":\"...\", \"currency\":\"PLN\", \"net_amount\":0.0, \"tax_amount\":0.0, \"gross_amount\":0.0}}"
+                prompt = f"Extract to JSON. Categories: {t['categories']}. Schema: {{\"date\":\"YYYY-MM-DD\", \"vendor\":\"Name\", \"category\":\"...\", \"currency\":\"PLN\", \"net_amount\":0.0, \"tax_amount\":0.0, \"gross_amount\":0.0}}. Return ONLY the JSON."
                 
-                # Dynamic mime_type handling
+                # Obsługa MIME-type dla screenshotów
                 m_type = f.type if f.type else "image/png"
                 file_part = types.Part.from_bytes(data=f_bytes, mime_type=m_type)
                 
                 res = client.models.generate_content(model='gemini-2.0-flash', contents=[prompt, file_part])
                 
-                clean_text = robust_json_parser(res.text)
-                data = json.loads(clean_text)
-                if isinstance(data, list): data = data[0]
+                # ATOMIC PARSING
+                data = atomic_json_parser(res.text)
                 
-                # Logic Duplicate Check
-                if not st.session_state['vault'].empty:
-                    is_dup = ((st.session_state['vault']['date'] == data['date']) & 
-                              (st.session_state['vault']['gross_amount'] == float(data['gross_amount']))).any()
-                    if is_dup:
-                        st.error(f"Duplikat logiczny: {data.get('vendor')} ({f.name})")
-                        continue
+                if data:
+                    if isinstance(data, list): data = data[0]
+                    
+                    # Logic Duplicate Check
+                    if not st.session_state['vault'].empty:
+                        is_dup = ((st.session_state['vault']['date'] == data['date']) & 
+                                  (st.session_state['vault']['gross_amount'] == float(data['gross_amount']))).any()
+                        if is_dup:
+                            st.error(f"Pominięto duplikat logiczny: {data.get('vendor')} ({f.name})")
+                            continue
 
-                f_id = str(uuid.uuid4())
-                st.session_state['storage'][f_id] = {"data": f_bytes, "name": f.name}
-                data['id'], data['hash'] = f_id, f_hash
-                
-                new_row = pd.DataFrame([data])
-                for col in COLS:
-                    if col not in new_row.columns: new_row[col] = "N/A"
-                
-                st.session_state['vault'] = pd.concat([st.session_state['vault'], new_row], ignore_index=True)
-                time.sleep(0.4)
-                
+                    f_id = str(uuid.uuid4())
+                    st.session_state['storage'][f_id] = {"data": f_bytes, "name": f.name}
+                    data['id'], data['hash'] = f_id, f_hash
+                    
+                    new_row = pd.DataFrame([data])
+                    for col in COLS:
+                        if col not in new_row.columns: new_row[col] = "N/A"
+                    st.session_state['vault'] = pd.concat([st.session_state['vault'], new_row], ignore_index=True)
+                    time.sleep(0.4)
+                else:
+                    st.error(f"Nie udało się wyodrębnić danych z pliku: {f.name}")
+
             except Exception as e:
-                st.error(f"❌ Błąd pliku {f.name}: {e}")
-                with st.expander("Szczegóły błędu (Debug)"):
-                    st.code(res.text if 'res' in locals() else "Brak odpowiedzi")
+                st.error(f"Błąd krytyczny pliku {f.name}: {e}")
         st.rerun()
 
-# --- TABLE & EXPORT ---
+# --- LEDGER & EXPORT ---
 if not st.session_state['vault'].empty:
     df = st.session_state['vault']
     for c in ["net_amount", "tax_amount", "gross_amount"]:
         df[c] = pd.to_numeric(df[c], errors='coerce').fillna(0).round(2)
 
     st.divider()
+    curr = df['currency'].mode()[0] if not df['currency'].empty else "PLN"
     c1, c2, c3 = st.columns(3)
-    main_curr = df['currency'].mode()[0] if not df['currency'].empty else "PLN"
-    c1.metric("Brutto", f"{df['gross_amount'].sum():,.2f} {main_curr}")
-    c2.metric("Podatek", f"{df['tax_amount'].sum():,.2f} {main_curr}")
-    c3.metric("Ilość", len(df))
+    c1.metric("Wydatki Brutto", f"{df['gross_amount'].sum():,.2f} {curr}")
+    c2.metric("Podatek VAT", f"{df['tax_amount'].sum():,.2f} {curr}")
+    c3.metric("Ilość faktur", len(df))
 
     st.subheader(t["ledger"])
     disp = ["date", "vendor", "category", "net_amount", "tax_amount", "gross_amount"]
-    edited = st.data_editor(df[disp], num_rows="dynamic", width='stretch')
+    edited = st.data_editor(df[disp], num_rows="dynamic", width='stretch', key="editor")
     for c in disp: st.session_state['vault'][c] = edited[c]
 
     if st.button(t["insights"]):
-        with st.spinner("Analiza portfela..."):
+        with st.spinner("Analiza strategiczna..."):
             summary = edited.groupby('vendor')['gross_amount'].sum().to_string()
-            p = f"Analiza wydatków: {summary}. Daj 3 konkretne rady biznesowe po polsku."
+            p = f"Analizuj wydatki: {summary}. Daj 3 krótkie, brutalne rady biznesowe po polsku."
             st.info(client.models.generate_content(model='gemini-2.0-flash', contents=p).text)
 
-    # ZIP LOGIC
+    # --- ZIP EXPORT ---
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w") as zf:
         ex_buf = io.BytesIO()
         export_df = edited.copy()
-        if is_pl:
+        if is_pl_format:
             for c in ["net_amount", "tax_amount", "gross_amount"]:
                 export_df[c] = export_df[c].apply(lambda x: str(f"{x:.2f}").replace('.', ','))
         with pd.ExcelWriter(ex_buf, engine='openpyxl') as wr: export_df.to_excel(wr, index=False)
         ts = datetime.now().strftime("%H%M")
-        zf.writestr(f"Raport_{ts}.xlsx", ex_buf.getvalue())
+        zf.writestr(f"Raport_Finansowy_{ts}.xlsx", ex_buf.getvalue())
         for _, r in st.session_state['vault'].iterrows():
             if r['id'] in st.session_state['storage']:
                 f_data = st.session_state['storage'][r['id']]
-                zf.writestr(f"Pliki/{r['date']}_{r['vendor']}.pdf", f_data['data'])
+                zf.writestr(f"Pliki_Zrodlowe/{r['date']}_{r['vendor']}.pdf", f_data['data'])
 
-    st.download_button(t["download"], buf.getvalue(), f"Paczka_{datetime.now().strftime('%d_%m')}.zip")
+    st.download_button(t["download"], buf.getvalue(), f"Paczka_Finansowa.zip")
 else:
-    st.info("System gotowy. Wgraj faktury.")
-        
+    st.info("Wrzuć faktury, aby wygenerować rejestr dla księgowości.")
+    
