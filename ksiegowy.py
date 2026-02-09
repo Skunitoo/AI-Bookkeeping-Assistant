@@ -12,143 +12,135 @@ import re
 import hashlib
 from datetime import datetime
 
-# --- 1. DESIGN & UX (GOLD SAAS LOOK) ---
-st.set_page_config(page_title="Global Finance OS | Gold v3.7", layout="wide")
+# --- UI & STYLING (Professional Dark Mode) ---
+st.set_page_config(page_title="Global Finance OS | v3.8", layout="wide")
 
 st.markdown("""
     <style>
-    .stApp { background-color: #0E1117; }
+    .stApp { background-color: #0E1117; color: #C9D1D9; }
     .stMetric { background-color: #161B22; border: 1px solid #30363D; padding: 15px; border-radius: 10px; }
     .stButton>button { 
         background-color: #238636; color: white; border-radius: 5px; 
-        font-weight: bold; width: 100%; border: none; height: 50px;
+        font-weight: bold; width: 100%; border: none; height: 45px;
     }
-    .stepper { display: flex; justify-content: space-between; margin-bottom: 30px; }
-    .step { color: #8B949E; font-size: 0.8rem; font-weight: bold; border-bottom: 2px solid #30363D; width: 30%; text-align: center; padding-bottom: 10px; }
+    .stepper { display: flex; justify-content: space-between; margin-bottom: 25px; }
+    .step { color: #8B949E; font-size: 0.85rem; font-weight: bold; border-bottom: 2px solid #30363D; width: 32%; text-align: center; padding-bottom: 8px; }
     .step-active { color: #58A6FF; border-bottom: 2px solid #58A6FF; }
     </style>
     """, unsafe_allow_html=True)
 
-# --- 2. TŁUMACZENIA BIZNESOWE ---
+# --- LOCALIZATION ---
 TRANSLATIONS = {
     "PL": {
         "title": "🚀 Paczka księgowa w minutę",
-        "subtitle": "Zero przepisywania faktur. Gotowe zestawienia w 60 sekund.",
-        "sidebar": "Konfiguracja Systemu",
-        "clear": "🗑️ Resetuj Sesję",
-        "upload": "Wgraj faktury (PDF, JPG, PNG)",
-        "process": "⚙️ PRZYGOTUJ PACZKĘ DLA KSIĘGOWEJ",
-        "ledger": "📝 Rejestr Finansowy",
-        "insights": "🧠 Analiza CFO (AI)",
-        "download": "📦 POBIERZ GOTOWY ZIP",
+        "subtitle": "Koniec z ręcznym przepisywaniem. System gotowy do pracy.",
+        "sidebar": "Ustawienia",
+        "clear": "🗑️ Resetuj system",
+        "upload": "Wgraj faktury lub screenshoty",
+        "process": "⚙️ PRZYGOTUJ PLIKI",
+        "ledger": "📝 Rejestr dokumentów",
+        "insights": "🧠 Analiza strategiczna",
+        "download": "📦 POBIERZ ZIP",
         "categories": "TOWAR, MEDIA, PALIWO, USŁUGI, INNE",
-        "dup_err": "🛑 Wykryto duplikat dokumentu: "
+        "dup_msg": "⚠️ Plik pominięty (Duplikat): "
     },
     "EN": {
         "title": "🚀 One-minute accounting pack",
-        "subtitle": "Zero manual entry. Audit-ready reports in 60 seconds.",
-        "sidebar": "System Settings",
+        "subtitle": "Zero manual entry. System ready.",
+        "sidebar": "Settings",
         "clear": "🗑️ Factory Reset",
-        "upload": "Upload Documents (Invoices, Receipts)",
-        "process": "⚙️ PREPARE ACCOUNTING PACKAGE",
+        "upload": "Upload invoices or screenshots",
+        "process": "⚙️ PREPARE PACKAGE",
         "ledger": "📝 Financial Ledger",
-        "insights": "🧠 CFO Insights (AI)",
-        "download": "📦 DOWNLOAD FINAL ZIP",
+        "insights": "🧠 Strategic Insights",
+        "download": "📦 DOWNLOAD ZIP",
         "categories": "COGS, OPEX, CAPEX, SERVICES, OTHER",
-        "dup_err": "🛑 Duplicate detected and skipped: "
+        "dup_msg": "⚠️ Skipping duplicate: "
     }
 }
 
-# --- 3. PANCERNE NARZĘDZIA (FIX EXTRA DATA) ---
+# --- SURGICAL TOOLS ---
 def robust_json_parser(text):
-    """Wyciąga czysty JSON, ignorując wszelką gadatliwość AI przed i po klamrach."""
+    """Deep extraction logic to prevent 'Extra data' errors."""
     try:
-        # Usuwa znaczniki markdown
+        # 1. Clean Markdown code blocks
         text = re.sub(r'```json\s*|```', '', text)
+        # 2. Find the outermost braces
         start = text.find('{')
         end = text.rfind('}')
         if start != -1 and end != -1:
-            return text[start:end+1].strip()
+            json_str = text[start:end+1].strip()
+            # 3. Final sanitization (remove trailing newlines)
+            return json_str
     except Exception:
         pass
     return text.strip()
 
-def get_file_hash(data):
-    return hashlib.md5(data).hexdigest()
+def get_hash(data): return hashlib.md5(data).hexdigest()
 
-# --- 4. INICJALIZACJA ---
+# --- INITIALIZATION ---
 COLS = ["id", "date", "vendor", "category", "currency", "net_amount", "tax_amount", "gross_amount", "hash"]
 if 'vault' not in st.session_state: st.session_state['vault'] = pd.DataFrame(columns=COLS)
 if 'storage' not in st.session_state: st.session_state['storage'] = {}
 
-# --- 5. SIDEBAR ---
+# --- SIDEBAR ---
 with st.sidebar:
     lang = st.radio("Language", ["PL", "EN"], horizontal=True)
     t = TRANSLATIONS[lang]
     st.header(t["sidebar"])
-    region = st.selectbox("Format Excel:", ["Polska (,)", "USA (.)"])
+    region = st.selectbox("Format Excel:", ["Polska (,)", "International (.)"])
     is_pl = ("," in region)
-    
     if st.button(t["clear"]):
         st.session_state['vault'] = pd.DataFrame(columns=COLS)
         st.session_state['storage'] = {}
         st.rerun()
-    
     api_key = st.secrets.get("api_key", "") or st.text_input("Gemini API Key", type="password")
 
-# --- 6. INTERAKTYWNY STEPPER ---
+# --- STEPPER ---
 s1, s2 = "step", "step"
 if st.session_state['vault'].empty: s1 = "step step-active"
 else: s2 = "step step-active"
+st.markdown(f'<div class="stepper"><div class="{s1}">1. WGRAJ</div><div class="{s2}">2. SPRAWDŹ</div><div class="step">3. POBIERZ</div></div>', unsafe_allow_html=True)
 
-st.markdown(f"""
-    <div class="stepper">
-        <div class="{s1}">1. WGRAJ PLIKI</div>
-        <div class="{s2}">2. WERYFIKACJA DANYCH</div>
-        <div class="step">3. EKSPORT DO KSIĘGOWOŚCI</div>
-    </div>
-    """, unsafe_allow_html=True)
-
-# --- 7. GŁÓWNY INTERFEJS ---
+# --- MAIN ENGINE ---
 st.title(t["title"])
 st.markdown(f"*{t['subtitle']}*")
 
 files = st.file_uploader(t["upload"], accept_multiple_files=True)
 
 if files and api_key:
-    # Użycie nowej biblioteki google-genai
     client = genai.Client(api_key=api_key)
-    
     if st.button(t["process"]):
         pb = st.progress(0)
         for i, f in enumerate(files):
             pb.progress((i + 1) / len(files))
             f_bytes = f.getvalue()
-            f_hash = get_file_hash(f_bytes)
+            f_hash = get_hash(f_bytes)
             
-            # TEST DUPLIKATU FIZYCZNEGO
             if not st.session_state['vault'].empty and f_hash in st.session_state['vault']['hash'].values:
-                st.warning(f"Pominięto: {f.name} (Plik już w bazie)")
+                st.warning(f"{t['dup_msg']} {f.name}")
                 continue
 
             try:
-                prompt = f"Extract to JSON. Categories: {t['categories']}. JSON: {{\"date\":\"YYYY-MM-DD\", \"vendor\":\"Name\", \"category\":\"...\", \"currency\":\"PLN\", \"net_amount\":0.0, \"tax_amount\":0.0, \"gross_amount\":0.0}}"
+                # Optimized prompt for mobile screenshots
+                prompt = f"Act as an OCR auditor. Extract document data into JSON. Use categories: {t['categories']}. Schema: {{\"date\":\"YYYY-MM-DD\", \"vendor\":\"Name\", \"category\":\"...\", \"currency\":\"PLN\", \"net_amount\":0.0, \"tax_amount\":0.0, \"gross_amount\":0.0}}"
                 
-                # Przesyłanie binariów zgodnie z nowym SDK
-                file_part = types.Part.from_bytes(data=f_bytes, mime_type=f.type)
+                # Dynamic mime_type handling
+                m_type = f.type if f.type else "image/png"
+                file_part = types.Part.from_bytes(data=f_bytes, mime_type=m_type)
+                
                 res = client.models.generate_content(model='gemini-2.0-flash', contents=[prompt, file_part])
                 
-                # Chirurgiczne wycinanie JSON
-                raw_json = robust_json_parser(res.text)
-                data = json.loads(raw_json)
+                clean_text = robust_json_parser(res.text)
+                data = json.loads(clean_text)
                 if isinstance(data, list): data = data[0]
                 
-                # TEST DUPLIKATU LOGICZNEGO
+                # Logic Duplicate Check
                 if not st.session_state['vault'].empty:
                     is_dup = ((st.session_state['vault']['date'] == data['date']) & 
                               (st.session_state['vault']['gross_amount'] == float(data['gross_amount']))).any()
                     if is_dup:
-                        st.error(f"{t['dup_err']} {data.get('vendor')} | {data.get('gross_amount')}")
+                        st.error(f"Duplikat logiczny: {data.get('vendor')} ({f.name})")
                         continue
 
                 f_id = str(uuid.uuid4())
@@ -163,21 +155,23 @@ if files and api_key:
                 time.sleep(0.4)
                 
             except Exception as e:
-                st.error(f"Problem z plikiem {f.name}: {e}")
+                st.error(f"❌ Błąd pliku {f.name}: {e}")
+                with st.expander("Szczegóły błędu (Debug)"):
+                    st.code(res.text if 'res' in locals() else "Brak odpowiedzi")
         st.rerun()
 
-# --- 8. DASHBOARD I EKSPORT ---
+# --- TABLE & EXPORT ---
 if not st.session_state['vault'].empty:
     df = st.session_state['vault']
     for c in ["net_amount", "tax_amount", "gross_amount"]:
         df[c] = pd.to_numeric(df[c], errors='coerce').fillna(0).round(2)
 
     st.divider()
-    curr = df['currency'].mode()[0] if not df['currency'].empty else "PLN"
     c1, c2, c3 = st.columns(3)
-    c1.metric("Wydatki Razem", f"{df['gross_amount'].sum():,.2f} {curr}")
-    c2.metric("Podatek do odzyskania", f"{df['tax_amount'].sum():,.2f} {curr}")
-    c3.metric("Ilość rekordów", len(df))
+    main_curr = df['currency'].mode()[0] if not df['currency'].empty else "PLN"
+    c1.metric("Brutto", f"{df['gross_amount'].sum():,.2f} {main_curr}")
+    c2.metric("Podatek", f"{df['tax_amount'].sum():,.2f} {main_curr}")
+    c3.metric("Ilość", len(df))
 
     st.subheader(t["ledger"])
     disp = ["date", "vendor", "category", "net_amount", "tax_amount", "gross_amount"]
@@ -185,12 +179,12 @@ if not st.session_state['vault'].empty:
     for c in disp: st.session_state['vault'][c] = edited[c]
 
     if st.button(t["insights"]):
-        with st.spinner("CFO analizuje profil kosztowy..."):
+        with st.spinner("Analiza portfela..."):
             summary = edited.groupby('vendor')['gross_amount'].sum().to_string()
-            p = f"Analizuj wydatki: {summary}. Daj 3 konkretne rady po polsku."
+            p = f"Analiza wydatków: {summary}. Daj 3 konkretne rady biznesowe po polsku."
             st.info(client.models.generate_content(model='gemini-2.0-flash', contents=p).text)
 
-    # --- EKSPORT ZIP ---
+    # ZIP LOGIC
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w") as zf:
         ex_buf = io.BytesIO()
@@ -199,15 +193,14 @@ if not st.session_state['vault'].empty:
             for c in ["net_amount", "tax_amount", "gross_amount"]:
                 export_df[c] = export_df[c].apply(lambda x: str(f"{x:.2f}").replace('.', ','))
         with pd.ExcelWriter(ex_buf, engine='openpyxl') as wr: export_df.to_excel(wr, index=False)
-        
         ts = datetime.now().strftime("%H%M")
-        zf.writestr(f"Raport_Księgowy_{ts}.xlsx", ex_buf.getvalue())
+        zf.writestr(f"Raport_{ts}.xlsx", ex_buf.getvalue())
         for _, r in st.session_state['vault'].iterrows():
             if r['id'] in st.session_state['storage']:
                 f_data = st.session_state['storage'][r['id']]
                 zf.writestr(f"Pliki/{r['date']}_{r['vendor']}.pdf", f_data['data'])
 
-    st.download_button(t["download"], buf.getvalue(), "Gotowa_Paczka_Finansowa.zip")
+    st.download_button(t["download"], buf.getvalue(), f"Paczka_{datetime.now().strftime('%d_%m')}.zip")
 else:
-    st.info("System gotowy. Wgraj faktury powyżej.")
-    
+    st.info("System gotowy. Wgraj faktury.")
+        
